@@ -1,9 +1,9 @@
 public class SmsSender extends NotificationSender {
-    public SmsSender(AuditLog audit) { super(audit); }
+    public SmsSender(AuditLog audit, NotificationValidator validator) { super(audit, validator); }
 
     @Override
-    public void send(Notification n) {
-        // Ignores subject; base type doesn't clarify expectations (smell)
+    protected void doSend(Notification n) {
+        // SMS channel ignores subject by design; delivery happens here.
         System.out.println("SMS -> to=" + n.phone + " body=" + n.body);
         audit.add("sms sent");
     }

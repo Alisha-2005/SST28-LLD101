@@ -1,4 +1,4 @@
 public class InvoiceFormatter {
-    // pointless wrapper (smell)
-    public static String identityFormat(String s) { return s; }
+    // kept for compatibility; can be replaced with a richer formatter implementation
+    public String identityFormat(String s) { return s; }
 }
