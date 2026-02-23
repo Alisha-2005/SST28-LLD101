@@ -2,12 +2,22 @@ import java.util.*;
 
 public class CafeteriaSystem {
     private final Map<String, MenuItem> menu = new LinkedHashMap<>();
-    private final FileStore store = new FileStore();
+    private final InvoiceRepository store;
+    private final TaxPolicy taxPolicy;
+    private final DiscountPolicy discountPolicy;
+    private final InvoiceFormatter formatter;
     private int invoiceSeq = 1000;
+
+    public CafeteriaSystem(InvoiceRepository store, TaxPolicy taxPolicy, DiscountPolicy discountPolicy, InvoiceFormatter formatter) {
+        this.store = store;
+        this.taxPolicy = taxPolicy;
+        this.discountPolicy = discountPolicy;
+        this.formatter = formatter;
+    }
 
     public void addToMenu(MenuItem i) { menu.put(i.id, i); }
 
-    // Intentionally SRP-violating: menu mgmt + tax + discount + format + persistence.
+    // Orchestrates pricing, policies, formatting and persistence; policies and persistence are injected.
     public void checkout(String customerType, List<OrderLine> lines) {
         String invId = "INV-" + (++invoiceSeq);
         StringBuilder out = new StringBuilder();
@@ -21,10 +31,10 @@ public class CafeteriaSystem {
             out.append(String.format("- %s x%d = %.2f\n", item.name, l.qty, lineTotal));
         }
 
-        double taxPct = TaxRules.taxPercent(customerType);
+        double taxPct = taxPolicy.taxPercent(customerType);
         double tax = subtotal * (taxPct / 100.0);
 
-        double discount = DiscountRules.discountAmount(customerType, subtotal, lines.size());
+        double discount = discountPolicy.discountAmount(customerType, subtotal, lines.size());
 
         double total = subtotal + tax - discount;
 
@@ -33,7 +43,7 @@ public class CafeteriaSystem {
         out.append(String.format("Discount: -%.2f\n", discount));
         out.append(String.format("TOTAL: %.2f\n", total));
 
-        String printable = InvoiceFormatter.identityFormat(out.toString());
+        String printable = formatter.identityFormat(out.toString());
         System.out.print(printable);
 
         store.save(invId, printable);
