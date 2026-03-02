@@ -7,38 +7,54 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * INTENTION: Global metrics registry (should be a Singleton).
+ * REFACTORED: Proper, thread-safe, lazy-initialized Singleton.
  *
- * CURRENT STATE (BROKEN ON PURPOSE):
- * - Constructor is public -> anyone can create instances.
- * - getInstance() is lazy but NOT thread-safe -> can create multiple instances.
- * - Reflection can call the constructor to create more instances.
- * - Serialization can create a new instance when deserialized.
- *
- * TODO (student):
- *  1) Make it a proper lazy, thread-safe singleton (private ctor)
- *  2) Block reflection-based multiple construction
- *  3) Preserve singleton on serialization (readResolve)
+ * - Private constructor prevents external instantiation
+ * - Static holder pattern for thread-safe lazy initialization
+ * - Reflection protection: constructor throws if instance already exists
+ * - Serialization protection: readResolve() returns the singleton instance
  */
-public class MetricsRegistry implements Serializable {
+public final class MetricsRegistry implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private static MetricsRegistry INSTANCE; // BROKEN: not volatile, not thread-safe
+    // Flag to detect reflection-based construction attempts
+    private static volatile boolean instanceCreated = false;
+
     private final Map<String, Long> counters = new HashMap<>();
 
-    // BROKEN: should be private and should prevent second construction
-    public MetricsRegistry() {
-        // intentionally empty
+    /**
+     * Private constructor.
+     * Throws exception if called via reflection after singleton is already created.
+     */
+    private MetricsRegistry() {
+        synchronized (MetricsRegistry.class) {
+            if (instanceCreated) {
+                throw new IllegalStateException("MetricsRegistry is a singleton. Use getInstance() instead.");
+            }
+            instanceCreated = true;
+        }
     }
 
-    // BROKEN: racy lazy init; two threads can create two instances
+    /**
+     * Thread-safe, lazy-initialized singleton using static holder pattern.
+     */
+    private static final class Holder {
+        private static final MetricsRegistry INSTANCE = new MetricsRegistry();
+    }
+
     public static MetricsRegistry getInstance() {
-        if (INSTANCE == null) {
-            INSTANCE = new MetricsRegistry();
-        }
-        return INSTANCE;
+        return Holder.INSTANCE;
+    }
+
+    /**
+     * Preserve singleton on serialization/deserialization.
+     * When an instance is deserialized, return the singleton instead.
+     */
+    @Serial
+    private Object readResolve() {
+        return getInstance();
     }
 
     public synchronized void setCount(String key, long value) {
@@ -56,6 +72,4 @@ public class MetricsRegistry implements Serializable {
     public synchronized Map<String, Long> getAll() {
         return Collections.unmodifiableMap(new HashMap<>(counters));
     }
-
-    // TODO: implement readResolve() to preserve singleton on deserialization
 }
