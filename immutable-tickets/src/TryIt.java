@@ -1,6 +1,5 @@
 import com.example.tickets.IncidentTicket;
 import com.example.tickets.TicketService;
-
 import java.util.List;
 
 /**

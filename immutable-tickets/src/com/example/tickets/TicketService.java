@@ -1,8 +1,5 @@
 package com.example.tickets;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * REFACTORED: Service layer that creates and "updates" immutable tickets.
  *
